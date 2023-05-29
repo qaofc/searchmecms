@@ -1,8 +1,19 @@
 <?php
 session_start();
 require 'config.php';
-$allowedExtensions = ['jpg', 'jpeg', 'png', 'bmp'];
 $uploadPath = 'uploads/';
+
+function checkMagicBytes($fileTmpPath, $validMagicBytes) {
+    $fileMagicBytes = file_get_contents($fileTmpPath, false, null, 0, 4);
+    return in_array(bin2hex($fileMagicBytes), $validMagicBytes);
+}
+
+$allowedExtensions = ['jpg', 'jpeg', 'png', 'bmp'];
+$validMagicBytes = [
+    'jpg' => 'ffd8ffe0', 
+    'png' => '89504e47', 
+    'bmp' => '424d'
+];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_SESSION['username'])) {
@@ -12,15 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fileTmpPath = $file['tmp_name'];
             $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-            if (in_array($fileExtension, $allowedExtensions)) {
-                $fileName = str_replace(chr(0), '', $fileName);
-
+            if (checkMagicBytes($fileTmpPath, $validMagicBytes)) {
                 $uploadDestination = $uploadPath . $fileName;
                 move_uploaded_file($fileTmpPath, $uploadDestination);
 
                 echo json_encode(['message' => 'File uploaded successfully.']);
             } else {
-                echo json_encode(['error' => 'Invalid file extension. Only JPG, JPEG, PNG, and BMP files are allowed.']);
+                echo json_encode(['error' => 'Invalid file type. Only JPG, JPEG, PNG, and BMP files are allowed.']);
             }
         } else {
             echo json_encode(['error' => 'No file uploaded.']);
